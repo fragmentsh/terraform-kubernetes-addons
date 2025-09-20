@@ -1,3 +1,131 @@
+resource "kubernetes_namespace" "kubernetes_namespaces" {
+  for_each = {
+    for k, v in local.addons :
+    k => v
+    if v.enabled
+    && try(v.namespace.create, false)
+  }
+
+  metadata {
+    annotations = each.value.namespace.annotations
+
+    labels = merge({
+      "kubernetes.io/metadata.name" = each.value.namespace.name
+      },
+      each.value.namespace.labels
+    )
+
+    name = each.value.namespace.name
+  }
+}
+
+resource "kubernetes_network_policy" "default_deny" {
+  for_each = {
+    for k, v in local.addons :
+    k => v
+    if v.enabled
+    && try(v.network_policies.default-deny.enabled, false)
+  }
+
+  metadata {
+    name      = "${each.key}-default-deny"
+    namespace = each.value.namespace.name
+  }
+
+  spec {
+    pod_selector {
+    }
+    policy_types = ["Ingress"]
+  }
+}
+
+resource "kubernetes_network_policy" "allow_namespace" {
+  for_each = {
+    for k, v in local.addons :
+    k => v
+    if v.enabled
+    && try(v.network_policies.allow-namespace.enabled, false)
+  }
+
+  metadata {
+    name      = "${each.key}-allow-namespace"
+    namespace = each.value.namespace.name
+  }
+
+  spec {
+    pod_selector {
+    }
+
+    ingress {
+      from {
+        namespace_selector {
+          match_labels = {
+            "kubernetes.io/metadata.name" = each.value.namespace.name
+          }
+        }
+      }
+    }
+
+    policy_types = ["Ingress"]
+  }
+}
+
+locals {
+  addons_network_policies = merge(
+    [
+      for addon_name, addon in local.addons : {
+        for netpol_name, netpol in try(addon.network_policies, {}) :
+        "${addon_name}-${netpol_name}" => {
+          namespace = addon.namespace.name
+          netpol    = netpol
+        }
+        if try(netpol.enabled, false)
+      }
+      if try(addon.enabled, false)
+    ]...
+  )
+
+}
+
+resource "kubernetes_network_policy" "network_policies" {
+
+  for_each = local.addons_network_policies
+
+  metadata {
+    name        = try(each.value.name, each.key)
+    namespace   = try(each.value.netpol.namespace, each.value.namespace)
+    labels      = try(each.value.netpol.labels, {})
+    annotations = try(each.value.netpol.annotations, {})
+  }
+
+  spec {
+    pod_selector {
+      dynamic "match_expressions" {
+        for_each = try(each.value.netpol.pod_selector.match_expressions, [])
+        content {
+          key      = match_expressions.value.key
+          operator = match_expressions.value.operator
+          values   = try(match_expressions.value.values, null)
+        }
+      }
+    }
+
+    dynamic "ingress"
+
+    ingress {
+      from {
+        namespace_selector {
+          match_labels = {
+            "kubernetes.io/metadata.name" = each.value.namespace.name
+          }
+        }
+      }
+    }
+
+    policy_types = each.value.netpol.policy_types
+  }
+}
+
 module "helm_releases" {
 
   # TODO: fix when new release
@@ -10,7 +138,7 @@ module "helm_releases" {
     k => v
     if v.enabled
   }
-  namespace  = each.value.namespace
+  namespace  = each.value.namespace.name
   repository = each.value.helm_release.repository
 
   app = {
@@ -19,6 +147,7 @@ module "helm_releases" {
     description                = "Helm release for ${each.key} on cluster ${local.cluster_name}"
     version                    = each.value.helm_release.version
     chart                      = each.value.helm_release.chart
+    create_namespace           = try(each.value.helm_release.create_namespace, false)
     force_update               = try(each.value.helm_release.force_update, false)
     wait                       = try(each.value.helm_release.wait, true)
     wait_for_jobs              = try(each.value.helm_release.wait_for_jobs, false)
@@ -40,7 +169,7 @@ module "helm_releases" {
   }
   values = [
     local.addons_computed_from_local[each.key].helm_values,
-    try(each.value.helm_release.values, ""),
+    try(each.value.helm_release.values, null),
   ]
 
   depends_on = [
@@ -57,38 +186,41 @@ module "pod_identities" {
     for k, v in local.addons :
     k => v
     if v.enabled
-    && try(v.eks-pod-identity.create, false)
+    && try(v.eks_pod_identity.enabled, false)
   }
 
-  name = "${local.cluster_name}-${each.key}"
+  name = each.key
+
+  association_defaults = {
+    namespace       = each.value.namespace.name
+    service_account = each.value.eks_pod_identity.service_account
+    tags            = local.tags
+    cluster_name    = local.cluster_name
+  }
+
+  associations = {
+    this = {}
+  }
 
   # EBS CSI Driver
   attach_aws_ebs_csi_policy = each.key == "aws-ebs-csi-driver" ? true : false
-  aws_ebs_csi_kms_arns      = try(each.value.encryption.enabled)
+  aws_ebs_csi_kms_arns      = try(each.value.encryption.enabled, false) ? [try(module.aws_kms[each.key].key_arn, each.value.encryption.existing_kms_key_arn)] : []
 
   # Cert Manager
   attach_cert_manager_policy    = each.key == "cert-manager"
   cert_manager_hosted_zone_arns = try(each.value.acme.dns01_enabled, false) ? each.value.acme.dns01_hosted_zone_arns : []
 
+  # AWS Load Balancer Controller
+  attach_aws_lb_controller_policy = each.key == "aws-load-balancer-controller" ? true : false
 
-  #attach_amazon_managed_service_prometheus_policy          = try(each.value.attach_amazon_managed_service_prometheus_policy, var.defaults.attach_amazon_managed_service_prometheus_policy, false)
-  #attach_aws_appmesh_controller_policy                     = try(each.value.attach_aws_appmesh_controller_policy, var.defaults.attach_aws_appmesh_controller_policy, false)
-  #attach_aws_appmesh_envoy_proxy_policy                    = try(each.value.attach_aws_appmesh_envoy_proxy_policy, var.defaults.attach_aws_appmesh_envoy_proxy_policy, false)
-  #attach_aws_cloudwatch_observability_policy               = try(each.value.attach_aws_cloudwatch_observability_policy, var.defaults.attach_aws_cloudwatch_observability_policy, false)
-  #attach_aws_efs_csi_policy                                = try(each.value.attach_aws_efs_csi_policy, var.defaults.attach_aws_efs_csi_policy, false)
-  #attach_aws_fsx_lustre_csi_policy                         = try(each.value.attach_aws_fsx_lustre_csi_policy, var.defaults.attach_aws_fsx_lustre_csi_policy, false)
-  #attach_aws_gateway_controller_policy                     = try(each.value.attach_aws_gateway_controller_policy, var.defaults.attach_aws_gateway_controller_policy, false)
-  #attach_aws_lb_controller_policy                          = try(each.value.attach_aws_lb_controller_policy, var.defaults.attach_aws_lb_controller_policy, false)
-  #attach_aws_lb_controller_targetgroup_binding_only_policy = try(each.value.attach_aws_lb_controller_targetgroup_binding_only_policy, var.defaults.attach_aws_lb_controller_targetgroup_binding_only_policy, false)
-  #attach_aws_node_termination_handler_policy               = try(each.value.attach_aws_node_termination_handler_policy, var.defaults.attach_aws_node_termination_handler_policy, false)
-  #attach_aws_privateca_issuer_policy                       = try(each.value.attach_aws_privateca_issuer_policy, var.defaults.attach_aws_privateca_issuer_policy, false)
-  #attach_aws_vpc_cni_policy                                = try(each.value.attach_aws_vpc_cni_policy, var.defaults.attach_aws_vpc_cni_policy, false)
-  #attach_cluster_autoscaler_policy                         = try(each.value.attach_cluster_autoscaler_policy, var.defaults.attach_cluster_autoscaler_policy, false)
-  #attach_custom_policy                                     = try(each.value.attach_custom_policy, var.defaults.attach_custom_policy, false)
-  #attach_external_dns_policy                               = try(each.value.attach_external_dns_policy, var.defaults.attach_external_dns_policy, false)
-  #attach_external_secrets_policy                           = try(each.value.attach_external_secrets_policy, var.defaults.attach_external_secrets_policy, false)
-  #attach_mountpoint_s3_csi_policy                          = try(each.value.attach_mountpoint_s3_csi_policy, var.defaults.attach_mountpoint_s3_csi_policy, false)
-  #attach_velero_policy                                     = try(each.value.attach_velero_policy, var.defaults.attach_velero_policy, false)
+  # Cluster Autoscaler
+  attach_cluster_autoscaler_policy = each.key == "cluster-autoscaler" ? true : false
+
+  # External DNS
+  attach_external_dns_policy = each.key == "external-dns" ? true : false
+
+  # Velero
+  attach_velero_policy = each.key == "velero" ? true : false
 
   tags = local.tags
 }
@@ -98,7 +230,7 @@ resource "kubernetes_storage_class" "kubernetes_storages_classes" {
     for k, v in local.addons :
     k => v
     if v.enabled
-    && try(v.storage_class.create, false)
+    && try(v.storage_class.enabled, false)
   }
   metadata {
     name = each.value.storage_class.name
@@ -153,6 +285,7 @@ locals {
       if try(addon.enabled, false)
     ]...
   )
+
   addons_kubernetes_templates = merge(
     [
       for addon_name, addon in local.addons_computed_from_local : {
