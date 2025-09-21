@@ -1,10 +1,10 @@
 locals {
-  tags = var.tags
+  aws = var.aws
 
   #############################################################################
   # Global defaults for all addons                                            #
   #############################################################################
-  addon_defaults = {
+  addon_defaults_defaults = {
     enabled = false
     namespace = {
       create      = true
@@ -15,8 +15,8 @@ locals {
       enabled = false
     }
     priority_classes = {
-      default    = "kubernetes-addons"
-      daemon_set = "kubernetes-addons-ds"
+      default    = ""
+      daemon_set = ""
     }
     network_policies = {
       allow-namespace = {
@@ -46,10 +46,6 @@ locals {
         chart      = local.helm_dependencies[index(local.helm_dependencies[*].name, "aws-ebs-csi-driver")].name
         repository = local.helm_dependencies[index(local.helm_dependencies[*].name, "aws-ebs-csi-driver")].repository
         version    = local.helm_dependencies[index(local.helm_dependencies[*].name, "aws-ebs-csi-driver")].version
-      }
-      priority_classes = {
-        default    = "kubernetes-addons"
-        daemon_set = "kubernetes-addons-ds"
       }
       eks_pod_identity = {
         enabled         = true
@@ -101,10 +97,6 @@ locals {
         repository = local.helm_dependencies[index(local.helm_dependencies[*].name, "cert-manager")].repository
         version    = local.helm_dependencies[index(local.helm_dependencies[*].name, "cert-manager")].version
       }
-      priority_classes = {
-        default    = "kubernetes-addons"
-        daemon_set = "kubernetes-addons-ds"
-      }
       eks_pod_identity = {
         enabled         = true
         service_account = "cert-manager"
@@ -140,10 +132,6 @@ locals {
         chart      = local.helm_dependencies[index(local.helm_dependencies[*].name, "aws-load-balancer-controller")].name
         repository = local.helm_dependencies[index(local.helm_dependencies[*].name, "aws-load-balancer-controller")].repository
         version    = local.helm_dependencies[index(local.helm_dependencies[*].name, "aws-load-balancer-controller")].version
-      }
-      priority_classes = {
-        default    = "kubernetes-addons"
-        daemon_set = "kubernetes-addons-ds"
       }
       eks_pod_identity = {
         enabled         = true
@@ -184,10 +172,6 @@ locals {
         repository = local.helm_dependencies[index(local.helm_dependencies[*].name, "ingress-nginx")].repository
         version    = local.helm_dependencies[index(local.helm_dependencies[*].name, "ingress-nginx")].version
       }
-      priority_classes = {
-        default    = "kubernetes-addons"
-        daemon_set = "kubernetes-addons-ds"
-      }
       network_policies = {
         allow-namespace = {
           enabled = true
@@ -200,30 +184,33 @@ locals {
   }
 
   #############################################################################
-  # Default custom config that needs interpolation                            #
+  # Default custom config that needs computation from locals                  #
   #############################################################################
-  addons_computed_from_local = {
+  addons_base_computed_from_local = {
 
     aws-ebs-csi-driver = {
-      helm_values = <<-VALUES
-        controller:
-          k8sTagClusterId: ${local.cluster_name}
-          extraCreateMetadata: true
-          priorityClassName: ${try(local.addons.aws-ebs-csi-driver.priority_classes.default, "")}
-          serviceAccount:
-            name: ${local.addons.aws-ebs-csi-driver.eks_pod_identity.service_account}
-        node:
-          tolerateAllTaints: true
-          priorityClassName: ${try(local.addons.aws-ebs-csi-driver.priority_classes.daemon_set, "")}
-        VALUES
+      helm_release = {
+        values = <<-VALUES
+          controller:
+            k8sTagClusterId: ${local.cluster_name}
+            extraCreateMetadata: true
+            priorityClassName: ${try(local.addons_intermediate.aws-ebs-csi-driver.priority_classes.default, "")}
+            serviceAccount:
+              name: ${local.addons_intermediate.aws-ebs-csi-driver.eks_pod_identity.service_account}
+          node:
+            tolerateAllTaints: true
+            priorityClassName: ${try(local.addons_intermediate.aws-ebs-csi-driver.priority_classes.daemon_set, "")}
+          VALUES
+      }
     }
 
     cert-manager = {
-      helm_values = <<-VALUES
+      helm_release = {
+        values = <<-VALUES
         global:
-          priorityClassName: ${try(local.addons.cert-manager.priority_classes.default, "")}
+          priorityClassName: ${try(local.addons_intermediate.cert-manager.priority_classes.default, "")}
         serviceAccount:
-            name: ${local.addons.cert-manager.eks_pod_identity.service_account}
+            name: ${local.addons_intermediate.cert-manager.eks_pod_identity.service_account}
         crds:
           enabled: true
         webhook:
@@ -237,34 +224,66 @@ locals {
         extraArgs:
           - "--enable-certificate-owner-ref"
         VALUES
+      }
       kubernetes_templates = {
         cluster_issuers = {
           enabled = true
           path    = "${path.module}/templates/cert-manager-cluster-issuers.yaml.tpl"
           vars = {
-            aws_region                 = data.aws_region.current.region
-            acme_email                 = local.addons.cert-manager.acme.email
-            acme_http01_enabled        = local.addons.cert-manager.acme.http01_enabled
-            acme_http01_ingress_class  = local.addons.cert-manager.acme.http01_ingress_class
-            acme_dns01_enabled         = local.addons.cert-manager.acme.dns01_enabled
-            acme_dns01_assume_role_arn = local.addons.cert-manager.acme.dns01_assume_role_arn
+            aws_region                 = local.aws.region
+            acme_email                 = local.addons_intermediate.cert-manager.acme.email
+            acme_http01_enabled        = local.addons_intermediate.cert-manager.acme.http01_enabled
+            acme_http01_ingress_class  = local.addons_intermediate.cert-manager.acme.http01_ingress_class
+            acme_dns01_enabled         = local.addons_intermediate.cert-manager.acme.dns01_enabled
+            acme_dns01_assume_role_arn = local.addons_intermediate.cert-manager.acme.dns01_assume_role_arn
           }
         }
       }
     }
 
     aws-load-balancer-controller = {
-      helm_values = <<-VALUES
+      helm_release = {
+        values = <<-VALUES
         clusterName: ${local.cluster_name}
-        region: ${data.aws_region.current.region}
+        region: ${local.aws.region}
         vpcId: SET_ME_IF_METADATA_SERVICE_IS_NOT_AVAILABLE
         serviceAccount:
-          name: ${local.addons.aws-load-balancer-controller.eks_pod_identity.service_account}
+          name: ${local.addons_intermediate.aws-load-balancer-controller.eks_pod_identity.service_account}
         VALUES
+      }
+      kubernetes_manifests = {
+        netpol_webhook = {
+          enabled   = true
+          yaml_body = <<-EOT
+            apiVersion: networking.k8s.io/v1
+            kind: NetworkPolicy
+            metadata:
+              name: ${local.addons_intermediate.aws-load-balancer-controller.namespace.name}-allow-webhook
+              namespace: ${local.addons_intermediate.aws-load-balancer-controller.namespace.name}
+            spec:
+              ingress:
+              - from:
+                - ipBlock:
+                    cidr: 0.0.0.0/0
+                ports:
+                - port: 9443
+                  protocol: TCP
+              podSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - aws-load-balancer-controller
+              policyTypes:
+              - Ingress
+            EOT
+        }
+      }
     }
 
     ingress-nginx = {
-      helm_values = <<-VALUES
+      helm_release = {
+        values = <<-VALUES
         controller:
           allowSnippetAnnotations: true
           enableTopologyAwareRouting: true
@@ -274,8 +293,9 @@ locals {
             enabled: true
           updateStrategy:
             type: RollingUpdate
-          priorityClassName: ${try(local.addons.ingress-nginx.priority_classes.default, "")}
+          priorityClassName: ${try(local.addons_intermediate.ingress-nginx.priority_classes.default, "")}
         VALUES
+      }
     }
   }
 }

@@ -14,7 +14,7 @@ spec:
     - dns01:
         route53:
           region: '${aws_region}'
-          %{ if role_arn != "" }
+          %{ if acme_dns01_assume_role_arn != "" }
           role: '${acme_dns01_assume_role_arn}'
           %{ endif }
     %{ endif }
@@ -44,7 +44,7 @@ spec:
     - dns01:
         route53:
           region: '${aws_region}'
-          %{ if role_arn != "" }
+          %{ if acme_dns01_assume_role_arn != "" }
           role: '${acme_dns01_assume_role_arn}'
           %{ endif }
     %{ endif }

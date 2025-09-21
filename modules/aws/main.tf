@@ -70,62 +70,6 @@ resource "kubernetes_network_policy" "allow_namespace" {
   }
 }
 
-locals {
-  addons_network_policies = merge(
-    [
-      for addon_name, addon in local.addons : {
-        for netpol_name, netpol in try(addon.network_policies, {}) :
-        "${addon_name}-${netpol_name}" => {
-          namespace = addon.namespace.name
-          netpol    = netpol
-        }
-        if try(netpol.enabled, false)
-      }
-      if try(addon.enabled, false)
-    ]...
-  )
-
-}
-
-resource "kubernetes_network_policy" "network_policies" {
-
-  for_each = local.addons_network_policies
-
-  metadata {
-    name        = try(each.value.name, each.key)
-    namespace   = try(each.value.netpol.namespace, each.value.namespace)
-    labels      = try(each.value.netpol.labels, {})
-    annotations = try(each.value.netpol.annotations, {})
-  }
-
-  spec {
-    pod_selector {
-      dynamic "match_expressions" {
-        for_each = try(each.value.netpol.pod_selector.match_expressions, [])
-        content {
-          key      = match_expressions.value.key
-          operator = match_expressions.value.operator
-          values   = try(match_expressions.value.values, null)
-        }
-      }
-    }
-
-    dynamic "ingress"
-
-    ingress {
-      from {
-        namespace_selector {
-          match_labels = {
-            "kubernetes.io/metadata.name" = each.value.namespace.name
-          }
-        }
-      }
-    }
-
-    policy_types = each.value.netpol.policy_types
-  }
-}
-
 module "helm_releases" {
 
   # TODO: fix when new release
@@ -154,7 +98,7 @@ module "helm_releases" {
     recreate_pods              = try(each.value.helm_release.recreate_pods, false)
     max_history                = try(each.value.helm_release.max_history, 5)
     lint                       = try(each.value.helm_release.lint, true)
-    cleanup_on_fail            = try(each.value.helm_release.cleanup_on_fail, false)
+    cleanup_on_fail            = try(each.value.helm_release.cleanup_on_fail, true)
     disable_webhooks           = try(each.value.helm_release.disable_webhooks, false)
     verify                     = try(each.value.helm_release.verify, false)
     reuse_values               = try(each.value.helm_release.reuse_values, false)
@@ -168,15 +112,14 @@ module "helm_releases" {
     timeout                    = try(each.value.helm_release.timeout, 300)
   }
   values = [
-    local.addons_computed_from_local[each.key].helm_values,
     try(each.value.helm_release.values, null),
+    try(each.value.helm_release.extra_values, null),
   ]
 
   depends_on = [
     module.pod_identities,
   ]
 }
-
 
 module "pod_identities" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
@@ -194,7 +137,7 @@ module "pod_identities" {
   association_defaults = {
     namespace       = each.value.namespace.name
     service_account = each.value.eks_pod_identity.service_account
-    tags            = local.tags
+    tags            = local.aws.tags
     cluster_name    = local.cluster_name
   }
 
@@ -222,7 +165,7 @@ module "pod_identities" {
   # Velero
   attach_velero_policy = each.key == "velero" ? true : false
 
-  tags = local.tags
+  tags = local.aws.tags
 }
 
 resource "kubernetes_storage_class" "kubernetes_storages_classes" {
@@ -269,7 +212,7 @@ module "aws_kms" {
     each.value.encryption.kms_key_alias
   ]
 
-  tags = local.tags
+  tags = local.aws.tags
 }
 
 locals {
@@ -288,7 +231,7 @@ locals {
 
   addons_kubernetes_templates = merge(
     [
-      for addon_name, addon in local.addons_computed_from_local : {
+      for addon_name, addon in local.addons : {
         for tpl_name, tpl in try(addon.kubernetes_templates, {}) :
         "${addon_name}-${tpl_name}" => {
           path = tpl.path
