@@ -25,6 +25,10 @@ locals {
       default-deny = {
         enabled = false
       }
+      allow-telemetry = {
+        enabled   = false
+        namespace = "telemetry"
+      }
     }
   }
 
@@ -51,14 +55,18 @@ locals {
         enabled         = true
         service_account = "ebs-csi-controller-sa"
       }
-      storage_class = {
-        enabled                = true
-        name                   = "ebs-sc"
-        is_default_class       = false
-        storage_provisioner    = "ebs.csi.aws.com"
-        volume_binding_mode    = "WaitForFirstConsumer"
-        allow_volume_expansion = true
-        parameters             = {}
+      storage_classes = {
+        default = {
+          enabled                = true
+          name                   = "ebs-sc"
+          is_default_class       = true
+          storage_provisioner    = "ebs.csi.aws.com"
+          volume_binding_mode    = "WaitForFirstConsumer"
+          allow_volume_expansion = true
+          parameters = {
+            type = "gp3"
+          }
+        }
       }
       encryption = {
         enabled              = true
@@ -113,6 +121,15 @@ locals {
         allow-namespace = {
           enabled = true
         }
+        allow-telemetry = {
+          enabled = true
+          ports = {
+            metrics = {
+              port     = "9402"
+              protocol = "TCP"
+            }
+          }
+        }
         default-deny = {
           enabled = true
         }
@@ -141,19 +158,11 @@ locals {
         allow-namespace = {
           enabled = true
         }
-        default-deny = {
+        allow-telemetry = {
           enabled = true
         }
-        webhook = {
+        default-deny = {
           enabled = true
-          pod_selector = {
-
-          }
-          policy_types = [
-            "Ingress"
-          ]
-
-
         }
       }
     }
@@ -176,9 +185,99 @@ locals {
         allow-namespace = {
           enabled = true
         }
+        allow-telemetry = {
+          enabled = true
+          ports = {
+            metrics = {
+              port     = "metrics"
+              protocol = "TCP"
+            }
+          }
+        }
         default-deny = {
           enabled = true
         }
+      }
+    }
+
+    external-dns = {
+      enabled = false
+      namespace = {
+        name        = "external-dns"
+        create      = true
+        labels      = {}
+        annotations = {}
+      }
+      helm_release = {
+        name       = local.helm_dependencies[index(local.helm_dependencies[*].name, "external-dns")].name
+        chart      = local.helm_dependencies[index(local.helm_dependencies[*].name, "external-dns")].name
+        repository = local.helm_dependencies[index(local.helm_dependencies[*].name, "external-dns")].repository
+        version    = local.helm_dependencies[index(local.helm_dependencies[*].name, "external-dns")].version
+      }
+      eks_pod_identity = {
+        enabled         = true
+        service_account = "external-dns"
+      }
+      network_policies = {
+        allow-namespace = {
+          enabled = true
+        }
+        allow-telemetry = {
+          enabled = true
+          ports = {
+            metrics = {
+              port     = "http"
+              protocol = "TCP"
+            }
+          }
+        }
+        default-deny = {
+          enabled = true
+        }
+      }
+      route53 = {
+        hosted_zone_arns = []
+      }
+    }
+
+    cluster-autoscaler = {
+      enabled = false
+      namespace = {
+        name        = "cluster-autoscaler"
+        create      = true
+        labels      = {}
+        annotations = {}
+      }
+      helm_release = {
+        name       = local.helm_dependencies[index(local.helm_dependencies[*].name, "cluster-autoscaler")].name
+        chart      = local.helm_dependencies[index(local.helm_dependencies[*].name, "cluster-autoscaler")].name
+        repository = local.helm_dependencies[index(local.helm_dependencies[*].name, "cluster-autoscaler")].repository
+        version    = local.helm_dependencies[index(local.helm_dependencies[*].name, "cluster-autoscaler")].version
+      }
+      eks_pod_identity = {
+        enabled         = true
+        service_account = "cluster-autoscaler"
+      }
+      network_policies = {
+        allow-namespace = {
+          enabled = true
+        }
+        allow-telemetry = {
+          enabled = true
+          ports = {
+            metrics = {
+              port     = "8085"
+              protocol = "TCP"
+            }
+          }
+        }
+        default-deny = {
+          enabled = true
+        }
+      }
+      image = {
+        tag        = ""
+        repository = ""
       }
     }
   }
@@ -294,6 +393,47 @@ locals {
           updateStrategy:
             type: RollingUpdate
           priorityClassName: ${try(local.addons_intermediate.ingress-nginx.priority_classes.default, "")}
+        VALUES
+      }
+    }
+
+    external-dns = {
+      helm_release = {
+        values = <<-VALUES
+          provider: aws
+          txtPrefix: "ext-dns-"
+          txtOwnerId: ${local.cluster_name}
+          logFormat: json
+          policy: sync
+          serviceAccount:
+            name: ${local.addons_intermediate.external-dns.eks_pod_identity.service_account}
+          priorityClassName: ${try(local.addons_intermediate.external-dns.priority_classes.default, "")}
+        VALUES
+      }
+    }
+
+    cluster-autoscaler = {
+      helm_release = {
+        values = <<-VALUES
+          nameOverride: "${local.addons_intermediate.cluster-autoscaler.helm_release.name}"
+          autoDiscovery:
+            clusterName: ${local.cluster_name}
+          awsRegion: ${local.aws.region}
+          rbac:
+            create: true
+            serviceAccount:
+              name: ${local.addons_intermediate.cluster-autoscaler.eks_pod_identity.service_account}
+          image:
+            tag: ${local.addons_intermediate.cluster-autoscaler.image.tag}
+          extraArgs:
+            balance-similar-node-groups: true
+            skip-nodes-with-local-storage: false
+            balancing-ignore-label_1: topology.ebs.csi.aws.com/zone
+            balancing-ignore-label_2: eks.amazonaws.com/nodegroup
+            balancing-ignore-label_3: eks.amazonaws.com/nodegroup-image
+            balancing-ignore-label_4: eks.amazonaws.com/sourceLaunchTemplateId
+            balancing-ignore-label_5: eks.amazonaws.com/sourceLaunchTemplateVersion
+          priorityClassName: ${try(local.addons_intermediate.cluster-autoscaler.priority_classes.default, "")}
         VALUES
       }
     }

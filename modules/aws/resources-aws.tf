@@ -1,77 +1,20 @@
-resource "kubernetes_namespace" "kubernetes_namespaces" {
-  for_each = {
-    for k, v in local.addons :
-    k => v
-    if v.enabled
-    && try(v.namespace.create, false)
-  }
-
-  metadata {
-    annotations = each.value.namespace.annotations
-
-    labels = merge({
-      "kubernetes.io/metadata.name" = each.value.namespace.name
-      },
-      each.value.namespace.labels
-    )
-
-    name = each.value.namespace.name
-  }
-}
-
-resource "kubernetes_network_policy" "default_deny" {
-  for_each = {
-    for k, v in local.addons :
-    k => v
-    if v.enabled
-    && try(v.network_policies.default-deny.enabled, false)
-  }
-
-  metadata {
-    name      = "${each.key}-default-deny"
-    namespace = each.value.namespace.name
-  }
-
-  spec {
-    pod_selector {
-    }
-    policy_types = ["Ingress"]
-  }
-}
-
-resource "kubernetes_network_policy" "allow_namespace" {
-  for_each = {
-    for k, v in local.addons :
-    k => v
-    if v.enabled
-    && try(v.network_policies.allow-namespace.enabled, false)
-  }
-
-  metadata {
-    name      = "${each.key}-allow-namespace"
-    namespace = each.value.namespace.name
-  }
-
-  spec {
-    pod_selector {
-    }
-
-    ingress {
-      from {
-        namespace_selector {
-          match_labels = {
-            "kubernetes.io/metadata.name" = each.value.namespace.name
-          }
+locals {
+  addons_storage_classes = merge(
+    [
+      for addon_name, addon in local.addons : {
+        for sc_name, sc in try(addon.storage_classes, {}) :
+        "${addon_name}-${sc_name}" => {
+          storage_class = sc
+          encryption    = addon.encryption
         }
+        if try(sc.enabled, false)
       }
-    }
-
-    policy_types = ["Ingress"]
-  }
+      if try(addon.enabled, false)
+    ]...
+  )
 }
 
 module "helm_releases" {
-
   # TODO: fix when new release
   #source  = "terraform-module/release/helm"
   #version = "~> 2.9.0"
@@ -160,38 +103,13 @@ module "pod_identities" {
   attach_cluster_autoscaler_policy = each.key == "cluster-autoscaler" ? true : false
 
   # External DNS
-  attach_external_dns_policy = each.key == "external-dns" ? true : false
+  attach_external_dns_policy    = each.key == "external-dns" ? true : false
+  external_dns_hosted_zone_arns = try(each.value.route53.hosted_zone_arns, [])
 
   # Velero
   attach_velero_policy = each.key == "velero" ? true : false
 
   tags = local.aws.tags
-}
-
-resource "kubernetes_storage_class" "kubernetes_storages_classes" {
-  for_each = {
-    for k, v in local.addons :
-    k => v
-    if v.enabled
-    && try(v.storage_class.enabled, false)
-  }
-  metadata {
-    name = each.value.storage_class.name
-    annotations = {
-      "storageclass.kubernetes.io/is-default-class" = tostring(each.value.storage_class.is_default_class)
-    }
-  }
-  storage_provisioner    = each.value.storage_class.storage_provisioner
-  volume_binding_mode    = each.value.storage_class.volume_binding_mode
-  allow_volume_expansion = each.value.storage_class.allow_volume_expansion
-
-  parameters = merge(
-    {
-      encrypted = each.value.encryption.enabled
-      kmsKeyId  = each.value.encryption.enabled ? try(module.aws_kms[each.key].key_arn, each.value.encryption.existing_kms_key_arn) : ""
-    },
-    each.value.storage_class.parameters
-  )
 }
 
 module "aws_kms" {
@@ -215,60 +133,23 @@ module "aws_kms" {
   tags = local.aws.tags
 }
 
-locals {
-  addons_kubernetes_manifests = merge(
-    [
-      for addon_name, addon in local.addons : {
-        for manifest_name, manifest in try(addon.kubernetes_manifests, {}) :
-        "${addon_name}-${manifest_name}" => {
-          yaml_body = manifest.yaml_body
-        }
-        if try(manifest.enabled, false)
-      }
-      if try(addon.enabled, false)
-    ]...
-  )
+resource "kubernetes_storage_class" "kubernetes_storages_classes" {
+  for_each = local.addons_storage_classes
+  metadata {
+    name = each.value.storage_class.name
+    annotations = {
+      "storageclass.kubernetes.io/is-default-class" = tostring(each.value.storage_class.is_default_class)
+    }
+  }
+  storage_provisioner    = each.value.storage_class.storage_provisioner
+  volume_binding_mode    = each.value.storage_class.volume_binding_mode
+  allow_volume_expansion = each.value.storage_class.allow_volume_expansion
 
-  addons_kubernetes_templates = merge(
-    [
-      for addon_name, addon in local.addons : {
-        for tpl_name, tpl in try(addon.kubernetes_templates, {}) :
-        "${addon_name}-${tpl_name}" => {
-          path = tpl.path
-          vars = tpl.vars
-        }
-        if try(tpl.enabled, false)
-      }
-      if try(addon.enabled, false)
-    ]...
+  parameters = merge(
+    {
+      encrypted = each.value.encryption.enabled
+      kmsKeyId  = each.value.encryption.enabled ? try(module.aws_kms[each.key].key_arn, each.value.encryption.existing_kms_key_arn, "") : ""
+    },
+    each.value.storage_class.parameters
   )
-  addons_kubernetes_templates_rendered = merge(
-    [
-      for key, ds in data.kubectl_path_documents.kube_path_documents : {
-        for idx, doc in try(ds.documents, []) :
-        "${key}-doc-${idx}" => {
-          yaml_body = doc
-        }
-      }
-    ]...
-  )
-  addons_all_kubernetes_manifests = merge(
-    local.addons_kubernetes_manifests,
-    local.addons_kubernetes_templates_rendered,
-  )
-}
-
-resource "kubectl_manifest" "kube_manifests" {
-  for_each          = local.addons_all_kubernetes_manifests
-  yaml_body         = each.value.yaml_body
-  server_side_apply = true
-  depends_on = [
-    module.helm_releases,
-  ]
-}
-
-data "kubectl_path_documents" "kube_path_documents" {
-  for_each = local.addons_kubernetes_templates
-  pattern  = each.value.path
-  vars     = each.value.vars
 }

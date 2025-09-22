@@ -3,4 +3,4 @@ settings:
 recursive:
   enabled: true
   path: modules
-  include-main: true
+  include-main: false
