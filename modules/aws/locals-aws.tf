@@ -11,6 +11,9 @@ locals {
       labels      = {}
       annotations = {}
     }
+    helm_release = {
+      enabled = true
+    }
     eks_pod_identity = {
       enabled = false
     }
@@ -278,6 +281,37 @@ locals {
       image = {
         tag        = ""
         repository = ""
+      }
+    }
+
+    flux = {
+      enabled = false
+      namespace = {
+        name        = "flux-system"
+        create      = false
+        labels      = {}
+        annotations = {}
+      }
+      helm_release = {
+        # Flux is installed via flux_bootstrap
+        enabled = false
+      }
+      bootstrap = {
+        enabled = true
+        path    = "gitops"
+      }
+      github = {
+        repository = {
+          create     = false
+          branch     = "main"
+          name       = "gitops"
+          visibility = "private"
+          auto_init  = false
+        }
+        deploy_key = {
+          create    = true
+          read_only = true
+        }
       }
     }
   }

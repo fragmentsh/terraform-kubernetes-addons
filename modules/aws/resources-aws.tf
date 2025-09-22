@@ -23,7 +23,8 @@ module "helm_releases" {
   for_each = {
     for k, v in local.addons :
     k => v
-    if v.enabled
+    if v.helm_release.enabled
+    && v.enabled
   }
   namespace  = each.value.namespace.name
   repository = each.value.helm_release.repository
@@ -60,6 +61,7 @@ module "helm_releases" {
   ]
 
   depends_on = [
+    kubernetes_namespace.kubernetes_namespaces,
     module.pod_identities,
   ]
 }
@@ -101,6 +103,7 @@ module "pod_identities" {
 
   # Cluster Autoscaler
   attach_cluster_autoscaler_policy = each.key == "cluster-autoscaler" ? true : false
+  cluster_autoscaler_cluster_names = [local.cluster_name]
 
   # External DNS
   attach_external_dns_policy    = each.key == "external-dns" ? true : false
