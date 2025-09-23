@@ -309,8 +309,8 @@ locals {
           auto_init  = false
         }
         deploy_key = {
-          create    = true
-          read_only = true
+          create    = false
+          read_only = false
         }
       }
     }
