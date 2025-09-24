@@ -31,7 +31,7 @@ module "helm_releases" {
 
   app = {
     deploy                     = try(each.value.helm_release.deploy, true)
-    name                       = each.value.helm_release.name
+    name                       = try(each.value.helm_release.name, each.key)
     description                = "Helm release for ${each.key} on cluster ${local.cluster_name}"
     version                    = each.value.helm_release.version
     chart                      = each.value.helm_release.chart

@@ -78,6 +78,13 @@ resource "kubernetes_namespace" "kubernetes_namespaces" {
 
     name = each.value.namespace.name
   }
+
+  lifecycle {
+    ignore_changes = [
+      metadata[0].annotations,
+      metadata[0].labels,
+    ]
+  }
 }
 
 resource "kubernetes_priority_class" "priority_classes" {
