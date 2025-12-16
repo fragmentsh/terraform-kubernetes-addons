@@ -1,6 +1,3 @@
 settings:
   lockfile: false
-recursive:
-  enabled: true
-  path: modules
-  include-main: false
+formatter: md
