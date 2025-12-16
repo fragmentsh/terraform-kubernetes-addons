@@ -17,12 +17,12 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.14.0 |
-| <a name="provider_flux"></a> [flux](#provider\_flux) | 1.6.4 |
-| <a name="provider_github"></a> [github](#provider\_github) | 6.6.0 |
-| <a name="provider_kubectl"></a> [kubectl](#provider\_kubectl) | 2.1.3 |
-| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | 2.38.0 |
-| <a name="provider_tls"></a> [tls](#provider\_tls) | 4.1.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.0 |
+| <a name="provider_flux"></a> [flux](#provider\_flux) | ~> 1.0 |
+| <a name="provider_github"></a> [github](#provider\_github) | ~> 6.0 |
+| <a name="provider_kubectl"></a> [kubectl](#provider\_kubectl) | ~> 2.0 |
+| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | ~> 2.0, != 2.12 |
+| <a name="provider_tls"></a> [tls](#provider\_tls) | ~> 4.0 |
 
 ## Modules
 
