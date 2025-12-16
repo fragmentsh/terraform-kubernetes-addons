@@ -119,9 +119,6 @@ dependencies:
   - name: victoria-metrics-k8s-stack
     version: 0.66.0
     repository: https://victoriametrics.github.io/helm-charts/
-  - name: yet-another-cloudwatch-exporter
-    version: 0.14.0
-    repository: https://nerdswords.github.io/yet-another-cloudwatch-exporter
   - name: reloader
     version: 2.2.7
     repository: https://stakater.github.io/stakater-charts
