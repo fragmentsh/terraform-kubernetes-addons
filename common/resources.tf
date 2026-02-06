@@ -192,7 +192,7 @@ resource "kubectl_manifest" "kube_manifests" {
   yaml_body         = each.value.yaml_body
   server_side_apply = true
   depends_on = [
-    module.helm_releases,
+    helm_release.this,
   ]
 }
 

@@ -14,11 +14,7 @@ locals {
   )
 }
 
-module "helm_releases" {
-  # TODO: fix when new release
-  #source  = "terraform-module/release/helm"
-  #version = "~> 2.9.0"
-  source = "git::https://github.com/wamsatson/terraform-helm-release.git?ref=c70ccf6cdca23862af6a8a960507b8d248cdd0e4"
+resource "helm_release" "this" {
 
   for_each = {
     for k, v in local.addons :
@@ -29,40 +25,70 @@ module "helm_releases" {
   namespace  = each.value.namespace.name
   repository = each.value.helm_release.repository
 
-  app = {
-    deploy                     = try(each.value.helm_release.deploy, true)
-    name                       = try(each.value.helm_release.name, each.key)
-    description                = "Helm release for ${each.key} on cluster ${local.cluster_name}"
-    version                    = each.value.helm_release.version
-    chart                      = each.value.helm_release.chart
-    create_namespace           = try(each.value.helm_release.create_namespace, false)
-    force_update               = try(each.value.helm_release.force_update, false)
-    wait                       = try(each.value.helm_release.wait, true)
-    wait_for_jobs              = try(each.value.helm_release.wait_for_jobs, false)
-    recreate_pods              = try(each.value.helm_release.recreate_pods, false)
-    max_history                = try(each.value.helm_release.max_history, 5)
-    lint                       = try(each.value.helm_release.lint, true)
-    cleanup_on_fail            = try(each.value.helm_release.cleanup_on_fail, true)
-    disable_webhooks           = try(each.value.helm_release.disable_webhooks, false)
-    verify                     = try(each.value.helm_release.verify, false)
-    reuse_values               = try(each.value.helm_release.reuse_values, false)
-    reset_values               = try(each.value.helm_release.reset_values, false)
-    atomic                     = try(each.value.helm_release.atomic, false)
-    skip_crds                  = try(each.value.helm_release.skip_crds, false)
-    render_subchart_notes      = try(each.value.helm_release.render_subchart_notes, true)
-    disable_openapi_validation = try(each.value.helm_release.disable_openapi_validation, false)
-    dependency_update          = try(each.value.helm_release.dependency_update, false)
-    replace                    = try(each.value.helm_release.replace, false)
-    timeout                    = try(each.value.helm_release.timeout, 300)
-  }
+  name                       = try(each.value.helm_release.name, each.key)
+  description                = "Helm release for ${each.key} on cluster ${local.cluster_name}"
+  version                    = each.value.helm_release.version
+  chart                      = each.value.helm_release.chart
+  create_namespace           = try(each.value.helm_release.create_namespace, false)
+  force_update               = try(each.value.helm_release.force_update, false)
+  wait                       = try(each.value.helm_release.wait, true)
+  wait_for_jobs              = try(each.value.helm_release.wait_for_jobs, false)
+  recreate_pods              = try(each.value.helm_release.recreate_pods, false)
+  max_history                = try(each.value.helm_release.max_history, 5)
+  lint                       = try(each.value.helm_release.lint, true)
+  cleanup_on_fail            = try(each.value.helm_release.cleanup_on_fail, true)
+  disable_webhooks           = try(each.value.helm_release.disable_webhooks, false)
+  verify                     = try(each.value.helm_release.verify, false)
+  reuse_values               = try(each.value.helm_release.reuse_values, false)
+  reset_values               = try(each.value.helm_release.reset_values, false)
+  atomic                     = try(each.value.helm_release.atomic, false)
+  skip_crds                  = try(each.value.helm_release.skip_crds, false)
+  render_subchart_notes      = try(each.value.helm_release.render_subchart_notes, true)
+  disable_openapi_validation = try(each.value.helm_release.disable_openapi_validation, false)
+  dependency_update          = try(each.value.helm_release.dependency_update, false)
+  replace                    = try(each.value.helm_release.replace, false)
+  timeout                    = try(each.value.helm_release.timeout, 300)
   values = [
     try(each.value.helm_release.values, null),
     try(each.value.helm_release.extra_values, null),
+    try((each.value.iam.irsa.enabled && strcontains(each.key, "aws-ebs-csi-driver")), false) ? yamlencode({
+      controller = {
+        serviceAccount = {
+          annotations = {
+            "eks.amazonaws.com/role-arn" = module.irsa[each.key].arn
+          }
+        }
+      }
+    }) : "",
+    try((each.value.iam.irsa.enabled && strcontains(each.key, "aws-load-balancer-controller")), false) ? yamlencode({
+      serviceAccount = {
+        annotations = {
+          "eks.amazonaws.com/role-arn" = module.irsa[each.key].arn
+        }
+      }
+    }) : "",
+    try((each.value.iam.irsa.enabled && strcontains(each.key, "cluster-autoscaler")), false) ? yamlencode({
+      rbac = {
+        serviceAccount = {
+          annotations = {
+            "eks.amazonaws.com/role-arn" = module.irsa[each.key].arn
+          }
+        }
+      }
+    }) : "",
+    try((each.value.iam.irsa.enabled && strcontains(each.key, "external-dns")), false) ? yamlencode({
+      serviceAccount = {
+        annotations = {
+          "eks.amazonaws.com/role-arn" = module.irsa[each.key].arn
+        }
+      }
+    }) : "",
   ]
 
   depends_on = [
     kubernetes_namespace.kubernetes_namespaces,
     module.pod_identities,
+    module.irsa
   ]
 }
 
@@ -74,15 +100,15 @@ module "pod_identities" {
     for k, v in local.addons :
     k => v
     if v.enabled
-    && try(v.eks_pod_identity.enabled, false)
+    && try(v.iam.eks_pod_identity.enabled, false)
   }
 
   name = each.key
 
   association_defaults = {
     namespace       = each.value.namespace.name
-    service_account = each.value.eks_pod_identity.service_account
-    tags            = local.aws.tags
+    service_account = each.value.iam.service_account
+    tags            = try(local.aws.tags, {})
     cluster_name    = local.cluster_name
   }
 
@@ -115,6 +141,44 @@ module "pod_identities" {
   tags = local.aws.tags
 }
 
+module "irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.0"
+
+  for_each = {
+    for k, v in local.addons :
+    k => v
+    if v.enabled
+    && try(v.iam.irsa.enabled, false)
+  }
+
+  name = each.key
+
+  attach_ebs_csi_policy = strcontains(each.key, "aws-ebs-csi-driver")
+  ebs_csi_kms_cmk_arns  = try(each.value.encryption.enabled, false) ? [try(module.aws_kms[each.key].key_arn, each.value.encryption.existing_kms_key_arn)] : []
+
+  attach_cert_manager_policy    = strcontains(each.key, "cert-manager")
+  cert_manager_hosted_zone_arns = try(each.value.acme.dns01_enabled, false) ? each.value.acme.dns01_hosted_zone_arns : []
+
+  attach_load_balancer_controller_policy = strcontains(each.key, "aws-load-balancer-controller")
+
+  attach_external_dns_policy    = strcontains(each.key, "external-dns")
+  external_dns_hosted_zone_arns = try(each.value.route53.hosted_zone_arns, [])
+
+  attach_cluster_autoscaler_policy = strcontains(each.key, "cluster-autoscaler")
+  cluster_autoscaler_cluster_names = [local.cluster_name]
+
+
+  oidc_providers = {
+    this = {
+      provider_arn               = each.value.iam.irsa.oidc_provider_arn
+      namespace_service_accounts = each.value.iam.irsa.namespace_service_accounts
+    }
+  }
+
+  tags = try(local.aws.tags, {})
+}
+
 module "aws_kms" {
   source  = "terraform-aws-modules/kms/aws"
   version = "~> 4.0"
@@ -133,7 +197,7 @@ module "aws_kms" {
     each.value.encryption.kms_key_alias
   ]
 
-  tags = local.aws.tags
+  tags = try(local.aws.tags, {})
 }
 
 resource "kubernetes_storage_class" "kubernetes_storages_classes" {

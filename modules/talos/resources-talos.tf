@@ -4,13 +4,13 @@ resource "helm_release" "this" {
     k => v
     if v.enabled
   }
+  namespace  = each.value.namespace.name
+  repository = each.value.helm_release.repository
 
   name                       = each.value.helm_release.name
-  namespace                  = each.value.namespace.name
-  repository                 = each.value.helm_release.repository
+  description                = "Helm release for ${each.key} on cluster ${local.cluster_name}"
   version                    = each.value.helm_release.version
   chart                      = each.value.helm_release.chart
-  description                = "Helm release for ${each.key} on cluster ${local.cluster_name}"
   create_namespace           = try(each.value.helm_release.create_namespace, false)
   force_update               = try(each.value.helm_release.force_update, false)
   wait                       = try(each.value.helm_release.wait, true)
@@ -30,7 +30,6 @@ resource "helm_release" "this" {
   dependency_update          = try(each.value.helm_release.dependency_update, false)
   replace                    = try(each.value.helm_release.replace, false)
   timeout                    = try(each.value.helm_release.timeout, 300)
-
   values = [
     try(each.value.helm_release.values, null),
     try(each.value.helm_release.extra_values, null),

@@ -54,9 +54,15 @@ locals {
         repository = local.helm_dependencies[index(local.helm_dependencies[*].name, "aws-ebs-csi-driver")].repository
         version    = local.helm_dependencies[index(local.helm_dependencies[*].name, "aws-ebs-csi-driver")].version
       }
-      eks_pod_identity = {
-        enabled         = true
+      iam = {
         service_account = "ebs-csi-controller-sa"
+        eks_pod_identity = {
+          enabled = true
+        }
+        irsa = {
+          enabled                    = false
+          namespace_service_accounts = ["kube-system:ebs-csi-controller-sa"]
+        }
       }
       storage_classes = {
         default = {
@@ -94,6 +100,22 @@ locals {
       }
     }
 
+    amazon-eks-pod-identity-webhook = {
+      enabled = false
+      namespace = {
+        name        = "kube-system"
+        create      = false
+        labels      = {}
+        annotations = {}
+      }
+      helm_release = {
+        name       = local.helm_dependencies[index(local.helm_dependencies[*].name, "amazon-eks-pod-identity-webhook")].name
+        chart      = local.helm_dependencies[index(local.helm_dependencies[*].name, "amazon-eks-pod-identity-webhook")].name
+        repository = local.helm_dependencies[index(local.helm_dependencies[*].name, "amazon-eks-pod-identity-webhook")].repository
+        version    = local.helm_dependencies[index(local.helm_dependencies[*].name, "amazon-eks-pod-identity-webhook")].version
+      }
+    }
+
     cert-manager = {
       enabled = false
       namespace = {
@@ -108,9 +130,15 @@ locals {
         repository = local.helm_dependencies[index(local.helm_dependencies[*].name, "cert-manager")].repository
         version    = local.helm_dependencies[index(local.helm_dependencies[*].name, "cert-manager")].version
       }
-      eks_pod_identity = {
-        enabled         = true
+      iam = {
         service_account = "cert-manager"
+        eks_pod_identity = {
+          enabled = true
+        }
+        irsa = {
+          enabled                    = false
+          namespace_service_accounts = ["cert-manager:cert-manager"]
+        }
       }
       acme = {
         email                  = "contact@acme.com"
@@ -153,9 +181,15 @@ locals {
         repository = local.helm_dependencies[index(local.helm_dependencies[*].name, "aws-load-balancer-controller")].repository
         version    = local.helm_dependencies[index(local.helm_dependencies[*].name, "aws-load-balancer-controller")].version
       }
-      eks_pod_identity = {
-        enabled         = true
+      iam = {
         service_account = "aws-load-balancer-controller"
+        eks_pod_identity = {
+          enabled = true
+        }
+        irsa = {
+          enabled                    = false
+          namespace_service_accounts = ["aws-load-balancer-controller:aws-load-balancer-controller"]
+        }
       }
       network_policies = {
         allow-namespace = {
@@ -217,9 +251,15 @@ locals {
         repository = local.helm_dependencies[index(local.helm_dependencies[*].name, "external-dns")].repository
         version    = local.helm_dependencies[index(local.helm_dependencies[*].name, "external-dns")].version
       }
-      eks_pod_identity = {
-        enabled         = true
+      iam = {
         service_account = "external-dns"
+        eks_pod_identity = {
+          enabled = true
+        }
+        irsa = {
+          enabled                    = false
+          namespace_service_accounts = ["external-dns:external-dns"]
+        }
       }
       network_policies = {
         allow-namespace = {
@@ -257,9 +297,15 @@ locals {
         repository = local.helm_dependencies[index(local.helm_dependencies[*].name, "cluster-autoscaler")].repository
         version    = local.helm_dependencies[index(local.helm_dependencies[*].name, "cluster-autoscaler")].version
       }
-      eks_pod_identity = {
-        enabled         = true
+      iam = {
         service_account = "cluster-autoscaler"
+        eks_pod_identity = {
+          enabled = true
+        }
+        irsa = {
+          enabled                    = false
+          namespace_service_accounts = ["cluster-autoscaler:cluster-autoscaler"]
+        }
       }
       network_policies = {
         allow-namespace = {
@@ -283,37 +329,6 @@ locals {
         repository = ""
       }
     }
-
-    flux = {
-      enabled = false
-      namespace = {
-        name        = "flux-system"
-        create      = false
-        labels      = {}
-        annotations = {}
-      }
-      helm_release = {
-        # Flux is installed via flux_bootstrap
-        enabled = false
-      }
-      bootstrap = {
-        enabled = true
-        path    = "gitops"
-      }
-      github = {
-        repository = {
-          create     = false
-          branch     = "main"
-          name       = "gitops"
-          visibility = "private"
-          auto_init  = false
-        }
-        deploy_key = {
-          create    = false
-          read_only = false
-        }
-      }
-    }
   }
 
   #############################################################################
@@ -329,11 +344,20 @@ locals {
             extraCreateMetadata: true
             priorityClassName: ${try(local.addons_intermediate.aws-ebs-csi-driver.priority_classes.default, "")}
             serviceAccount:
-              name: ${local.addons_intermediate.aws-ebs-csi-driver.eks_pod_identity.service_account}
+              name: ${local.addons_intermediate.aws-ebs-csi-driver.iam.service_account}
           node:
             tolerateAllTaints: true
             priorityClassName: ${try(local.addons_intermediate.aws-ebs-csi-driver.priority_classes.daemon_set, "")}
           VALUES
+      }
+    }
+
+    amazon-eks-pod-identity-webhook = {
+      helm_release = {
+        values = <<-VALUES
+          config:
+            defaultAwsRegion: ${local.aws.region}
+        VALUES
       }
     }
 
@@ -343,7 +367,7 @@ locals {
         global:
           priorityClassName: ${try(local.addons_intermediate.cert-manager.priority_classes.default, "")}
         serviceAccount:
-            name: ${local.addons_intermediate.cert-manager.eks_pod_identity.service_account}
+            name: ${local.addons_intermediate.cert-manager.iam.service_account}
         crds:
           enabled: true
         webhook:
@@ -381,7 +405,7 @@ locals {
         region: ${local.aws.region}
         vpcId: SET_ME_IF_METADATA_SERVICE_IS_NOT_AVAILABLE
         serviceAccount:
-          name: ${local.addons_intermediate.aws-load-balancer-controller.eks_pod_identity.service_account}
+          name: ${local.addons_intermediate.aws-load-balancer-controller.iam.service_account}
         VALUES
       }
       kubernetes_manifests = {
@@ -440,7 +464,7 @@ locals {
           logFormat: json
           policy: sync
           serviceAccount:
-            name: ${local.addons_intermediate.external-dns.eks_pod_identity.service_account}
+            name: ${local.addons_intermediate.external-dns.iam.service_account}
           priorityClassName: ${try(local.addons_intermediate.external-dns.priority_classes.default, "")}
         VALUES
       }
@@ -456,7 +480,7 @@ locals {
           rbac:
             create: true
             serviceAccount:
-              name: ${local.addons_intermediate.cluster-autoscaler.eks_pod_identity.service_account}
+              name: ${local.addons_intermediate.cluster-autoscaler.iam.service_account}
           image:
             tag: ${local.addons_intermediate.cluster-autoscaler.image.tag}
           extraArgs:
