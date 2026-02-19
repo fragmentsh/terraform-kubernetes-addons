@@ -32,9 +32,6 @@
       "/(^|/)helm-dependencies.yaml$/"
     ]
   },
-  "reviewers": [
-    "team:team"
-  ],
   "commitMessageExtra": "to {{newVersion}} (was {{currentVersion}})",
   "prHourlyLimit": 0,
   "packageRules": [
