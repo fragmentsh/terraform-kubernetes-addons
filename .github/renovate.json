@@ -4,7 +4,6 @@
     ":ignoreUnstable",
     ":prImmediately",
     ":updateNotScheduled",
-    ":automergeDisabled",
     ":disableRateLimiting",
     ":ignoreModulesAndTests",
     ":gitSignOff",
@@ -13,7 +12,6 @@
     "helpers:disableTypesNodeMajor",
     "workarounds:all",
     ":automergeDigest",
-    ":automergePatch",
     ":automergeMinor",
     ":dependencyDashboard"
   ],
@@ -27,8 +25,7 @@
     "terraform"
   ],
   "semanticCommits": "enabled",
-  "automergeType": "pr-comment",
-  "automergeComment": "renovate:merge",
+  "platformAutomerge": true,
   "helmv3": {
     "enabled": true,
     "managerFilePatterns": [
