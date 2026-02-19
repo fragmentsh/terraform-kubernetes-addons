@@ -25,7 +25,7 @@
     "terraform"
   ],
   "semanticCommits": "enabled",
-  "platformAutomerge": true,
+  "platformAutomerge": false,
   "helmv3": {
     "enabled": true,
     "managerFilePatterns": [
@@ -69,6 +69,21 @@
       "matchUpdateTypes": [
         "major",
         "minor"
+      ]
+    },
+    {
+      "matchManagers": [
+        "helmv3",
+        "github-actions",
+        "pre-commit"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ],
+      "addLabels": [
+        "automerge"
       ]
     },
     {
