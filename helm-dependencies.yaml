@@ -6,7 +6,7 @@ dependencies:
     version: 0.13.2
     repository: https://charts.admiralty.io
   - name: secrets-store-csi-driver
-    version: 1.5.5
+    version: 1.5.6
     repository: https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
   - name: amazon-eks-pod-identity-webhook
     repository: https://jkroepke.github.io/helm-charts/
