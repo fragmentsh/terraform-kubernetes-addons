@@ -48,7 +48,7 @@ dependencies:
     version: 0.42.1
     repository: oci://ghcr.io/controlplaneio-fluxcd/charts
   - name: flux-instance
-    version: 0.42.1
+    version: 0.43.0
     repository: oci://ghcr.io/controlplaneio-fluxcd/charts
   - name: grafana-mcp
     version: 0.3.1
