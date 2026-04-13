@@ -132,5 +132,5 @@ dependencies:
     version: 0.73.0
     repository: https://victoriametrics.github.io/helm-charts/
   - name: reloader
-    version: 2.2.9
+    version: 2.2.10
     repository: https://stakater.github.io/stakater-charts
