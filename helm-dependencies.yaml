@@ -33,7 +33,7 @@ dependencies:
     version: v1.20.2
     repository: https://charts.jetstack.io
   - name: cert-manager-csi-driver
-    version: v0.13.0
+    version: v0.14.0
     repository: https://charts.jetstack.io
   - name: cilium
     version: 1.19.3
