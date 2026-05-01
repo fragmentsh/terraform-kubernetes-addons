@@ -10,7 +10,7 @@ dependencies:
     repository: https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
   - name: amazon-eks-pod-identity-webhook
     repository: https://jkroepke.github.io/helm-charts/
-    version: 2.6.2
+    version: 2.6.3
   - name: aws-cloud-controller-manager
     version: 0.0.11
     repository: https://kubernetes.github.io/cloud-provider-aws
