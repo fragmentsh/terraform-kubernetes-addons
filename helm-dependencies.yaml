@@ -36,7 +36,7 @@ dependencies:
     version: v0.14.0
     repository: https://charts.jetstack.io
   - name: cilium
-    version: 1.19.3
+    version: 1.19.4
     repository: https://helm.cilium.io/
   - name: cluster-autoscaler
     version: 9.57.0
