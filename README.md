@@ -5,6 +5,7 @@
   <a href="https://github.com/shardlabsxyz/terraform-kubernetes-addons/actions/workflows/pre-commit.yml"><img alt="Pre-Commit" src="https://github.com/shardlabsxyz/terraform-kubernetes-addons/actions/workflows/pre-commit.yml/badge.svg"></a>
   <a href="https://github.com/shardlabsxyz/terraform-kubernetes-addons/actions/workflows/pr-title.yml"><img alt="Validate PR title" src="https://github.com/shardlabsxyz/terraform-kubernetes-addons/actions/workflows/pr-title.yml/badge.svg"></a>
   <a href="https://github.com/shardlabsxyz/terraform-kubernetes-addons/actions/workflows/release.yml"><img alt="Release" src="https://github.com/shardlabsxyz/terraform-kubernetes-addons/actions/workflows/release.yml/badge.svg"></a>
+  <a href="https://github.com/shardlabsxyz/terraform-kubernetes-addons/releases"><img alt="Latest Release" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Fshardlabsxyz%2Fterraform-kubernetes-addons%2Freleases%2Flatest&amp;query=%24.tag_name&amp;label=release"></a>
   <a href="https://github.com/shardlabsxyz/terraform-kubernetes-addons/actions/workflows/stale-actions.yaml"><img alt="Stale actions" src="https://github.com/shardlabsxyz/terraform-kubernetes-addons/actions/workflows/stale-actions.yaml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
   <a href="https://opentofu.org/"><img alt="OpenTofu compatible" src="https://img.shields.io/badge/OpenTofu-compatible-FFDA18"></a>
