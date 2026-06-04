@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.105.0
+    rev: v1.106.0
     hooks:
       - id: terraform_fmt
       - id: terraform_validate
@@ -8,15 +8,28 @@ repos:
         args:
           - --hook-config=--retry-once-with-cleanup=true
           - --tf-init-args=-upgrade
-      - id: terraform_docs
-        args:
-          - --args=--config=.terraform-docs.yml
+  - repo: local
+    hooks:
+      - id: terraform-docs-terraform-view
+        name: Terraform docs (Terraform view)
+        entry: scripts/terraform-docs-terraform-view.sh
+        language: system
+        files: \.(tf|tofu|terraform\.lock\.hcl)$
+        require_serial: true
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      - id: check-added-large-files
+      - id: check-json
       - id: check-merge-conflict
+      - id: check-yaml
       - id: end-of-file-fixer
+      - id: trailing-whitespace
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: 43.104.10
+    rev: 43.212.0
     hooks:
       - id: renovate-config-validator
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.25.2
+    hooks:
+      - id: zizmor

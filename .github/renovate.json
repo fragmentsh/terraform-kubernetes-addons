@@ -13,7 +13,8 @@
     "workarounds:all",
     ":automergeDigest",
     ":automergeMinor",
-    ":dependencyDashboard"
+    ":dependencyDashboard",
+    "helpers:pinGitHubActionDigests"
   ],
   "baseBranchPatterns": [
     "main"
@@ -31,6 +32,9 @@
     "managerFilePatterns": [
       "/(^|/)helm-dependencies.yaml$/"
     ]
+  },
+  "pre-commit": {
+    "enabled": true
   },
   "commitMessageExtra": "to {{newVersion}} (was {{currentVersion}})",
   "prHourlyLimit": 0,
@@ -82,8 +86,19 @@
         "patch",
         "digest"
       ],
+      "automerge": true,
       "addLabels": [
         "automerge"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false,
+      "addLabels": [
+        "major",
+        "breaking-change"
       ]
     },
     {

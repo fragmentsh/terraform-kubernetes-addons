@@ -1,8 +1,11 @@
+OpenTofu compatibility: this module supports OpenTofu >= 1.11.0 via `versions_override.tofu`.
+The generated docs below intentionally use the Terraform view of the module.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.13.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.0 |
 | <a name="requirement_github"></a> [github](#requirement\_github) | ~> 6.0 |
@@ -15,7 +18,7 @@
 ## Providers
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.0 |
 | <a name="provider_helm"></a> [helm](#provider\_helm) | ~> 3.0 |
 | <a name="provider_kubectl"></a> [kubectl](#provider\_kubectl) | ~> 2.0 |
@@ -24,7 +27,7 @@
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_aws_kms"></a> [aws\_kms](#module\_aws\_kms) | terraform-aws-modules/kms/aws | ~> 4.0 |
 | <a name="module_deepmerge_addons_final"></a> [deepmerge\_addons\_final](#module\_deepmerge\_addons\_final) | invicton-labs/deepmerge/null | 0.1.6 |
 | <a name="module_deepmerge_addons_intermediate"></a> [deepmerge\_addons\_intermediate](#module\_deepmerge\_addons\_intermediate) | invicton-labs/deepmerge/null | 0.1.6 |
@@ -35,7 +38,7 @@
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [helm_release.this](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [kubectl_manifest.kube_manifests](https://registry.terraform.io/providers/alekc/kubectl/latest/docs/resources/manifest) | resource |
 | [kubernetes_namespace.kubernetes_namespaces](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/namespace) | resource |
@@ -52,7 +55,7 @@
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_addon_defaults"></a> [addon\_defaults](#input\_addon\_defaults) | Default values for addons | `any` | `{}` | no |
 | <a name="input_addons"></a> [addons](#input\_addons) | n/a | `any` | `{}` | no |
 | <a name="input_aws"></a> [aws](#input\_aws) | AWS provider customization | `any` | `{}` | no |

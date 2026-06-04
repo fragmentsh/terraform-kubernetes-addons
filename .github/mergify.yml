@@ -3,6 +3,8 @@ pull_request_rules:
     conditions:
       - author=renovate[bot]
       - label=automerge
+      - label!=major
+      - label!=breaking-change
     actions:
       review:
         type: APPROVE
@@ -12,6 +14,8 @@ pull_request_rules:
       - author=renovate[bot]
       - base=main
       - label=automerge
+      - label!=major
+      - label!=breaking-change
       - "#approved-reviews-by>=1"
       - check-success=Max TF pre-commit
       - check-success=Validate PR title
@@ -22,6 +26,7 @@ pull_request_rules:
   - name: Automatic merge on approval
     conditions:
       - base=main
+      - author!=renovate[bot]
       - "#approved-reviews-by>=1"
     actions:
       merge:
@@ -30,6 +35,7 @@ pull_request_rules:
   - name: Automatic merge on approval release
     conditions:
       - base=release
+      - author!=renovate[bot]
       - "#approved-reviews-by>=1"
     actions:
       merge:

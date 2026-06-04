@@ -1,7 +1,7 @@
 # terraform-kubernetes-addons
 
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/terraform-kubernetes-addons)
-[![terraform-kubernetes-addons](https://github.com/fragmentsh/terraform-kubernetes-addons/workflows/terraform-kubernetes-addons/badge.svg)](https://github.com/fragmentsh/terraform-kubernetes-addons/actions?query=workflow%3Aterraform-kubernetes-addons)
+[![terraform-kubernetes-addons](https://github.com/shardlabsxyz/terraform-kubernetes-addons/workflows/terraform-kubernetes-addons/badge.svg)](https://github.com/shardlabsxyz/terraform-kubernetes-addons/actions?query=workflow%3Aterraform-kubernetes-addons)
 
 ## Modules
 
@@ -30,8 +30,12 @@ hooks](https://github.com/antonbabenko/pre-commit-terraform) which uses
 ## Contributing
 
 Report issues/questions/feature requests on in the
-[issues](https://github.com/fragmentsh/terraform-kubernetes-addons/issues/new)
+[issues](https://github.com/shardlabsxyz/terraform-kubernetes-addons/issues/new)
 section.
 
 Full contributing [guidelines are covered
-here](https://github.com/fragmentsh/terraform-kubernetes-addons/blob/master/.github/CONTRIBUTING.md).
+here](https://github.com/shardlabsxyz/terraform-kubernetes-addons/blob/master/.github/CONTRIBUTING.md).
+
+## License
+
+MIT
