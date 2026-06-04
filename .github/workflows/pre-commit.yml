@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 env:
-  TERRAFORM_DOCS_VERSION: v0.20.0
-  TFLINT_VERSION: v0.60.0
+  TERRAFORM_DOCS_VERSION: v0.24.0
+  TFLINT_VERSION: v0.63.1
 
 jobs:
   collectInputs:

@@ -22,6 +22,7 @@ repos:
       - id: check-added-large-files
       - id: check-json
       - id: check-merge-conflict
+      - id: check-toml
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
