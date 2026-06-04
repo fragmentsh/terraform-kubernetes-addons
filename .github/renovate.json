@@ -1,4 +1,5 @@
 {
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     ":separateMajorReleases",
     ":ignoreUnstable",
@@ -11,8 +12,6 @@
     "group:recommended",
     "helpers:disableTypesNodeMajor",
     "workarounds:all",
-    ":automergeDigest",
-    ":automergeMinor",
     ":dependencyDashboard",
     "helpers:pinGitHubActionDigests"
   ],
@@ -27,7 +26,9 @@
     "terraform"
   ],
   "semanticCommits": "enabled",
+  "automerge": false,
   "platformAutomerge": false,
+  "rebaseWhen": "behind-base-branch",
   "helmv3": {
     "enabled": true,
     "managerFilePatterns": [
@@ -40,6 +41,44 @@
   "commitMessageExtra": "to {{newVersion}} (was {{currentVersion}})",
   "prHourlyLimit": 0,
   "packageRules": [
+    {
+      "description": "Label major updates",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "addLabels": [
+        "update-major",
+        "breaking-change"
+      ]
+    },
+    {
+      "description": "Label minor updates",
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "addLabels": [
+        "update-minor"
+      ]
+    },
+    {
+      "description": "Label patch updates",
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "addLabels": [
+        "update-patch"
+      ]
+    },
+    {
+      "description": "Label digest pinning and digest refreshes",
+      "matchUpdateTypes": [
+        "digest",
+        "pinDigest"
+      ],
+      "addLabels": [
+        "update-digest"
+      ]
+    },
     {
       "matchManagers": [
         "github-actions"
@@ -78,6 +117,7 @@
       ]
     },
     {
+      "description": "Only low-risk automation updates are eligible for Mergify automerge",
       "matchManagers": [
         "helmv3",
         "github-actions",
@@ -89,19 +129,8 @@
         "patch",
         "digest"
       ],
-      "automerge": true,
       "addLabels": [
-        "automerge"
-      ]
-    },
-    {
-      "matchUpdateTypes": [
-        "major"
-      ],
-      "automerge": false,
-      "addLabels": [
-        "major",
-        "breaking-change"
+        "automerge-candidate"
       ]
     },
     {
