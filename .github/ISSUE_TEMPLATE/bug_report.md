@@ -1,33 +1,37 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: "[bug]"
+title: "fix: "
 labels: bug
-assignees: ArchiFleKs
+assignees: ''
 
 ---
 
-## Describe the bug
+## Describe The Bug
 
-A clear and concise description of what the bug is.
+A clear description of what is wrong.
 
-## What is the current behavior?
+## Current Behavior
 
+What happens today?
 
-## How to reproduce? Please include a code sample if relevant.
+## Expected Behavior
 
+What should happen instead?
 
-## What's the expected behavior?
+## Reproduction
 
+Please include the smallest relevant Terraform/OpenTofu configuration, variable values, or module input snippet.
 
-## Are you able to fix this problem and submit a PR? Link here if you have already.
+## Environment
 
+- Affected module:
+- Module version or commit:
+- Terraform version:
+- OpenTofu version:
+- Kubernetes version:
+- Cloud provider and provider version:
 
-## Environment details
+## Additional Context
 
-* Affected module version:
-* OS:
-* Terraform version:
-* Kubernetes version
-
-## Any other relevant info
+Logs, plans, error messages, or related links.

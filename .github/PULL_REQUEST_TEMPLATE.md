@@ -1,10 +1,18 @@
-# Pull request title
+# Pull Request
 
 ## Description
 
-Please explain the changes you made here and link to any relevant issues.
+Describe the change and link any related issue.
+
+## Module Impact
+
+- Affected module(s):
+- Terraform/OpenTofu compatibility impact:
+- User-facing behavior change:
 
 ### Checklist
 
+- [ ] PR title uses an accepted semantic prefix (`feat:`, `fix:`, `docs:`, `ci:`, or `chore:`)
+- [ ] `pre-commit run -a` has been run locally
 - [ ] CI tests are passing
-- [ ] README.md has been updated after any changes to variables and outputs. See https://github.com/shardlabsxyz/terraform-kubernetes-addons/#doc-generation
+- [ ] Generated module README files are updated after changes to variables, outputs, providers, resources, or requirements
